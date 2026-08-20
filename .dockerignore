@@ -1,0 +1,5 @@
+.git
+.tmp
+.venv
+current
+__pycache__

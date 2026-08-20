@@ -1,0 +1,22 @@
+[
+  {
+    "id": "refund_and_region",
+    "prompt": "What are the refund window and the primary AWS region?"
+  },
+  {
+    "id": "support_and_retention",
+    "prompt": "What is the support SLA and how long are audit logs retained?"
+  },
+  {
+    "id": "region_and_refund",
+    "prompt": "What is the primary AWS region and the refund window?"
+  },
+  {
+    "id": "retention_and_support",
+    "prompt": "How long are audit logs retained and what is the support SLA?"
+  },
+  {
+    "id": "refund_and_support",
+    "prompt": "What are the refund window and the support SLA?"
+  }
+]

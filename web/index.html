@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Ashr — Agent Regression Gate</title>
+  <style>
+    :root {
+      --bg: #090b10;
+      --panel: #10131a;
+      --panel-2: #151922;
+      --line: #282e3a;
+      --muted: #8b93a6;
+      --text: #eef1f7;
+      --green: #75e2a7;
+      --green-dim: #17382a;
+      --red: #ff7b85;
+      --red-dim: #401e25;
+      --amber: #f4c56a;
+      --blue: #82b7ff;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      min-width: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 78% -10%, rgba(71, 112, 174, .13), transparent 34rem),
+        radial-gradient(circle at 15% 0%, rgba(65, 187, 128, .08), transparent 27rem),
+        var(--bg);
+      font-family: var(--sans);
+      overflow-x: hidden;
+    }
+    button, input, select { font: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .shell { width: min(1240px, 100%); margin: 0 auto; padding: 0 24px 48px; }
+    header { height: 68px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 720; letter-spacing: -.02em; }
+    .mark { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #506276; border-radius: 7px; background: linear-gradient(145deg, #1e2734, #10141b); color: var(--green); font-family: var(--mono); font-size: 13px; }
+    .context { color: var(--muted); font-size: 13px; font-family: var(--mono); }
+    .hero { padding: 45px 0 27px; display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+    h1 { margin: 0 0 9px; max-width: 720px; font-size: clamp(29px, 4vw, 45px); line-height: 1.04; letter-spacing: -.045em; }
+    .lede { max-width: 680px; margin: 0; color: #aeb5c3; font-size: 15px; line-height: 1.6; }
+    .status { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(16, 19, 26, .7); font: 12px var(--mono); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #657087; }
+    .status.running .status-dot { background: var(--amber); box-shadow: 0 0 0 4px rgba(244,197,106,.12); animation: pulse 1.1s infinite; }
+    .status.pass .status-dot { background: var(--green); }
+    .status.fail .status-dot { background: var(--red); }
+    @keyframes pulse { 50% { opacity: .45; } }
+    .controls { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 18px; }
+    button { border: 1px solid var(--line); border-radius: 8px; padding: 9px 14px; background: var(--panel-2); color: var(--text); cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+    button:hover:not(:disabled) { border-color: #465064; background: #1b202b; }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    button.primary { color: #08140e; background: var(--green); border-color: var(--green); font-weight: 700; }
+    button.primary:hover:not(:disabled) { background: #8be9b7; border-color: #8be9b7; }
+    button.danger { color: #ffb5ba; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(290px, .65fr); gap: 16px; align-items: start; }
+    .card { min-width: 0; border: 1px solid var(--line); border-radius: 12px; background: rgba(16,19,26,.94); overflow: hidden; box-shadow: 0 16px 50px rgba(0,0,0,.18); }
+    .card-head { min-height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+    .card-title { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 680; }
+    .tiny { color: var(--muted); font: 11px var(--mono); }
+    .terminal { min-height: 525px; max-height: 66vh; overflow: auto; padding: 16px; background: #0c0f14; font: 12px/1.65 var(--mono); scrollbar-color: #394151 transparent; }
+    .terminal.empty { display: grid; place-items: center; color: #626b7c; text-align: center; font-family: var(--sans); }
+    .line { white-space: pre-wrap; overflow-wrap: anywhere; animation: appear .18s ease-out; }
+    @keyframes appear { from { opacity: 0; transform: translateY(2px); } }
+    .dim { color: #687185; }
+    .prompt { color: var(--blue); }
+    .ok { color: var(--green); }
+    .bad { color: var(--red); }
+    .warn { color: var(--amber); }
+    .side { display: grid; gap: 16px; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .metric { padding: 15px; border-right: 1px solid var(--line); }
+    .metric:last-child { border-right: 0; }
+    .metric-value { margin-bottom: 5px; font: 700 21px var(--mono); }
+    .metric-label { color: var(--muted); font-size: 11px; }
+    .scenario-list { max-height: 336px; overflow: auto; }
+    .scenario { width: 100%; display: block; padding: 13px 15px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; text-align: left; background: transparent; }
+    .scenario:last-child { border-bottom: 0; }
+    .scenario:hover:not(:disabled), .scenario.selected { background: #171b24; }
+    .scenario-top { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+    .scenario-id { overflow: hidden; text-overflow: ellipsis; font: 11px var(--mono); color: #c9cfda; }
+    .badge { flex: 0 0 auto; padding: 3px 6px; border-radius: 5px; color: var(--muted); background: #212631; font: 10px var(--mono); text-transform: uppercase; }
+    .badge.pass { color: var(--green); background: var(--green-dim); }
+    .badge.fail { color: var(--red); background: var(--red-dim); }
+    .question { margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .inspector { padding: 14px 15px 16px; }
+    .inspector label { display: block; margin: 0 0 7px; color: var(--muted); font-size: 11px; }
+    select { width: 100%; margin-bottom: 12px; padding: 9px 10px; color: var(--text); border: 1px solid var(--line); border-radius: 7px; background: #0e1117; }
+    pre { min-height: 132px; max-height: 285px; margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid #242a35; border-radius: 7px; background: #0b0e13; color: #b9c0ce; font: 10.5px/1.55 var(--mono); }
+    .legend { margin-top: 17px; color: #7d8698; font: 11px/1.6 var(--mono); }
+    .legend span { margin-right: 14px; white-space: nowrap; }
+    @media (max-width: 800px) {
+      .shell { padding: 0 14px 30px; }
+      .hero { padding-top: 30px; align-items: start; flex-direction: column; }
+      .grid { grid-template-columns: minmax(0, 1fr); }
+      .terminal { min-height: 430px; max-height: 62vh; }
+      .context { display: none; }
+    }
+    @media (max-width: 430px) {
+      .controls button { flex: 1 1 calc(50% - 9px); padding-inline: 8px; }
+      .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .metric { padding: 12px 9px; }
+      .metric-value { font-size: 17px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><span class="mark">A/</span><span>Ashr</span></div>
+      <div class="context">agent-regression-gate / local</div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1>Catch agent regressions before they ship.</h1>
+        <p class="lede">A frozen eval set records tool-call traces and answers, then compares a current run field-by-field. Watch a one-line prompt change break tool order—and the gate catch it.</p>
+      </div>
+      <div class="status" id="status"><span class="status-dot"></span><span id="statusText">Ready</span></div>
+    </section>
+
+    <div class="controls">
+      <button class="primary" id="fullRun">Run complete demo</button>
+      <button id="baselineRun">Run baseline</button>
+      <button class="danger" id="regressionRun">Inject prompt regression</button>
+      <button id="reset">Reset</button>
+    </div>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-head">
+          <div class="card-title"><span>Eval run</span><span class="tiny" id="runMode">no run</span></div>
+          <span class="tiny">live trace</span>
+        </div>
+        <div class="terminal empty" id="terminal"><div>Run the demo to stream the agent trace.<br><span class="tiny">Everything executes locally in this browser.</span></div></div>
+      </article>
+
+      <aside class="side">
+        <article class="card">
+          <div class="metrics">
+            <div class="metric"><div class="metric-value" id="passed">—</div><div class="metric-label">Passed</div></div>
+            <div class="metric"><div class="metric-value" id="failed">—</div><div class="metric-label">Changed</div></div>
+            <div class="metric"><div class="metric-value" id="calls">—</div><div class="metric-label">Tool calls</div></div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="card-head"><div class="card-title">Frozen scenarios</div><span class="tiny">5 evals</span></div>
+          <div class="scenario-list" id="scenarioList"></div>
+        </article>
+        <article class="card">
+          <div class="card-head"><div class="card-title">Artifact inspector</div><span class="tiny">JSON</span></div>
+          <div class="inspector">
+            <label for="artifactType">Compare record</label>
+            <select id="artifactType"><option value="current">Current run</option><option value="golden">Golden baseline</option><option value="diff">Field diff</option></select>
+            <pre id="artifact">Select a scenario after a run.</pre>
+          </div>
+        </article>
+      </aside>
+    </section>
+    <div class="legend"><span><b class="ok">PASS</b> exact trace match</span><span><b class="bad">FAIL</b> field changed</span><span>Bedrock-compatible mock · MCP policy tool · recursive JSON diff</span></div>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const SCENARIOS = [
+        { id: 'refund_and_region', prompt: 'What are the refund window and the primary AWS region?' },
+        { id: 'support_and_retention', prompt: 'What is the support SLA and how long are audit logs retained?' },
+        { id: 'region_and_refund', prompt: 'What is the primary AWS region and the refund window?' },
+        { id: 'retention_and_support', prompt: 'How long are audit logs retained and what is the support SLA?' },
+        { id: 'refund_and_support', prompt: 'What are the refund window and the support SLA?' }
+      ];
+      const POLICIES = {
+        refund_window: '30 days',
+        primary_region: 'us-east-1',
+        support_sla: '4 hours',
+        audit_retention: '90 days'
+      };
+      const POLICY_TERMS = {
+        refund_window: 'refund',
+        primary_region: 'region',
+        support_sla: 'support',
+        audit_retention: 'audit'
+      };
+      const BASELINE_PROMPT = 'Answer using lookup_policy. Call policy keys in the order they appear in the question.';
+      const REGRESSED_PROMPT = 'Answer using lookup_policy. Call policy keys in alphabetical key order.';
+
+      const state = {
+        goldens: new Map(), current: new Map(), diffs: new Map(), verdicts: new Map(),
+        selected: SCENARIOS[0].id, running: false, generation: 0
+      };
+      const el = id => document.getElementById(id);
+      const terminal = el('terminal');
+      const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+      const clone = value => JSON.parse(JSON.stringify(value));
+
+      // Browser equivalent of the MCP lookup_policy tool.
+      function lookupPolicy(key) {
+        if (!Object.prototype.hasOwnProperty.call(POLICIES, key)) throw new Error(`unknown policy key: ${key}`);
+        return POLICIES[key];
+      }
+
+      // Exact deterministic agent behavior from BedrockCompatibleMock._generate.
+      function policyKeys(question, promptVersion) {
+        const lower = question.toLowerCase();
+        const keys = Object.entries(POLICY_TERMS)
+          .filter(([, term]) => lower.includes(term))
+          .sort((a, b) => lower.indexOf(a[1]) - lower.indexOf(b[1]))
+          .map(([key]) => key);
+        if (promptVersion === 'regressed') keys.sort();
+        return keys;
+      }
+
+      function runScenario(scenario, promptVersion) {
+        const keys = policyKeys(scenario.prompt, promptVersion);
+        const toolCalls = keys.map(key => ({
+          tool: 'lookup_policy', arguments: { key }, result: lookupPolicy(key)
+        }));
+        return {
+          scenario_id: scenario.id,
+          prompt: scenario.prompt,
+          tool_calls: toolCalls,
+          final_answer: toolCalls.map(call => `${call.arguments.key}=${call.result}`).join('; ')
+        };
+      }
+
+      function jsonEqual(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+      function jsonValue(value) { return JSON.stringify(value); }
+      function changed(path, golden, current) { return `${path}: golden=${jsonValue(golden)} current=${jsonValue(current)}`; }
+
+      // Port of cmd/evaldiff/main.go: recursive maps, sorted union keys, positional arrays.
+      function diff(path, golden, current) {
+        if (jsonEqual(golden, current)) return [];
+        if (golden !== null && typeof golden === 'object' && !Array.isArray(golden)) {
+          if (current === null || typeof current !== 'object' || Array.isArray(current)) return [changed(path, golden, current)];
+          const keys = [...new Set([...Object.keys(golden), ...Object.keys(current)])].sort();
+          const differences = [];
+          for (const key of keys) {
+            if (!Object.prototype.hasOwnProperty.call(golden, key)) differences.push(`${path}.${key}: unexpected`);
+            else if (!Object.prototype.hasOwnProperty.call(current, key)) differences.push(`${path}.${key}: missing`);
+            else differences.push(...diff(`${path}.${key}`, golden[key], current[key]));
+          }
+          return differences;
+        }
+        if (Array.isArray(golden)) {
+          if (!Array.isArray(current) || golden.length !== current.length) return [changed(path, golden, current)];
+          return golden.flatMap((value, index) => diff(`${path}[${index}]`, value, current[index]));
+        }
+        return [changed(path, golden, current)];
+      }
+
+      function line(text = '', className = '') {
+        terminal.classList.remove('empty');
+        if (terminal.firstElementChild && terminal.children.length === 1 && terminal.firstElementChild.tagName === 'DIV' && !terminal.firstElementChild.classList.contains('line')) terminal.textContent = '';
+        const row = document.createElement('div');
+        row.className = `line ${className}`;
+        row.textContent = text;
+        terminal.appendChild(row);
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+
+      function setStatus(kind, text) {
+        el('status').className = `status ${kind || ''}`;
+        el('statusText').textContent = text;
+      }
+
+      function setBusy(value) {
+        state.running = value;
+        ['fullRun', 'baselineRun', 'regressionRun'].forEach(id => el(id).disabled = value);
+      }
+
+      function renderScenarios() {
+        const list = el('scenarioList');
+        list.textContent = '';
+        for (const scenario of SCENARIOS) {
+          const verdict = state.verdicts.get(scenario.id);
+          const button = document.createElement('button');
+          button.className = `scenario${state.selected === scenario.id ? ' selected' : ''}`;
+          button.dataset.id = scenario.id;
+          const top = document.createElement('span'); top.className = 'scenario-top';
+          const id = document.createElement('span'); id.className = 'scenario-id'; id.textContent = scenario.id;
+          const badge = document.createElement('span'); badge.className = `badge ${verdict || ''}`; badge.textContent = verdict || 'frozen';
+          const question = document.createElement('span'); question.className = 'question'; question.textContent = scenario.prompt;
+          top.append(id, badge); button.append(top, question);
+          button.addEventListener('click', () => { state.selected = scenario.id; renderScenarios(); renderArtifact(); });
+          list.appendChild(button);
+        }
+      }
+
+      function renderArtifact() {
+        const type = el('artifactType').value;
+        let value;
+        if (type === 'golden') value = state.goldens.get(state.selected);
+        else if (type === 'diff') value = state.diffs.get(state.selected);
+        else value = state.current.get(state.selected);
+        el('artifact').textContent = value === undefined ? 'No artifact for this scenario yet.' : JSON.stringify(value, null, 2);
+      }
+
+      function renderMetrics() {
+        const values = [...state.verdicts.values()];
+        const current = [...state.current.values()];
+        el('passed').textContent = values.length ? values.filter(v => v === 'pass').length : '—';
+        el('failed').textContent = values.length ? values.filter(v => v === 'fail').length : '—';
+        el('calls').textContent = current.length ? current.reduce((sum, run) => sum + run.tool_calls.length, 0) : '—';
+      }
+
+      async function checkpoint(token, delay = 170) {
+        await wait(delay);
+        if (token !== state.generation) throw new Error('cancelled');
+      }
+
+      function seedGoldens() {
+        state.goldens.clear();
+        for (const scenario of SCENARIOS) state.goldens.set(scenario.id, clone(runScenario(scenario, 'baseline')));
+      }
+
+      async function recordPhase(token) {
+        el('runMode').textContent = 'record / baseline';
+        line('== Record frozen golden baselines ==', 'prompt');
+        await checkpoint(token, 260);
+        seedGoldens();
+        for (const scenario of SCENARIOS) {
+          const result = state.goldens.get(scenario.id);
+          line(`  ${scenario.id}`, 'dim');
+          for (const call of result.tool_calls) {
+            await checkpoint(token, 80);
+            line(`    → lookup_policy({"key":"${call.arguments.key}"})  ${call.result}`, 'dim');
+          }
+        }
+        await checkpoint(token, 180);
+        line('Recorded 5 golden scenarios in Redis', 'ok');
+      }
+
+      async function executeRun(version, token, heading = true) {
+        if (!state.goldens.size) seedGoldens();
+        state.current.clear(); state.diffs.clear(); state.verdicts.clear();
+        el('runMode').textContent = `run / ${version}`;
+        if (heading) {
+          line('');
+          line(version === 'baseline' ? '== Unchanged agent: should pass ==' : '== One-line prompt regression: CI should catch it ==', 'prompt');
+          line(`system: ${version === 'baseline' ? BASELINE_PROMPT : REGRESSED_PROMPT}`, version === 'baseline' ? 'dim' : 'warn');
+        }
+        for (const scenario of SCENARIOS) {
+          await checkpoint(token, 150);
+          const result = runScenario(scenario, version);
+          state.current.set(scenario.id, result);
+          const differences = diff('$', state.goldens.get(scenario.id), result);
+          state.diffs.set(scenario.id, differences);
+          const verdict = differences.length ? 'fail' : 'pass';
+          state.verdicts.set(scenario.id, verdict);
+          line(`${verdict === 'pass' ? 'PASS' : 'FAIL'}  ${scenario.id}`, verdict === 'pass' ? 'ok' : 'bad');
+          for (const difference of differences) line(`  ${difference}`, 'bad');
+          renderScenarios(); renderMetrics(); renderArtifact();
+        }
+        const failures = [...state.verdicts.values()].filter(v => v === 'fail').length;
+        line('');
+        if (failures) {
+          line(`Agent regression gate failed: ${failures} scenario(s) changed`, 'bad');
+          setStatus('fail', `${failures} regressions blocked`);
+        } else {
+          line(`Agent regression gate passed: ${SCENARIOS.length} scenario(s) match golden`, 'ok');
+          setStatus('pass', 'All scenarios match');
+        }
+        return failures;
+      }
+
+      async function start(kind) {
+        if (state.running) return;
+        const token = ++state.generation;
+        setBusy(true); setStatus('running', 'Running evals…');
+        terminal.textContent = ''; terminal.classList.remove('empty');
+        try {
+          if (kind === 'full') {
+            await recordPhase(token);
+            await executeRun('baseline', token);
+            await checkpoint(token, 550);
+            await executeRun('regressed', token);
+            line(''); line('Demo complete: the expected regression was blocked.', 'ok');
+          } else {
+            line(`$ ./run.sh --prompt-version ${kind}`, 'prompt');
+            await executeRun(kind, token, false);
+          }
+        } catch (error) {
+          if (error.message !== 'cancelled') { line(`ERROR: ${error.message}`, 'bad'); setStatus('fail', 'Run error'); }
+        } finally {
+          if (token === state.generation) setBusy(false);
+        }
+      }
+
+      function reset() {
+        state.generation++; setBusy(false);
+        state.goldens.clear(); state.current.clear(); state.diffs.clear(); state.verdicts.clear();
+        state.selected = SCENARIOS[0].id;
+        terminal.className = 'terminal empty';
+        terminal.innerHTML = '<div>Run the demo to stream the agent trace.<br><span class="tiny">Everything executes locally in this browser.</span></div>';
+        el('runMode').textContent = 'no run'; el('artifact').textContent = 'Select a scenario after a run.';
+        setStatus('', 'Ready'); renderScenarios(); renderMetrics();
+      }
+
+      el('fullRun').addEventListener('click', () => start('full'));
+      el('baselineRun').addEventListener('click', () => start('baseline'));
+      el('regressionRun').addEventListener('click', () => start('regressed'));
+      el('reset').addEventListener('click', reset);
+      el('artifactType').addEventListener('change', renderArtifact);
+      renderScenarios(); renderMetrics();
+    })();
+  </script>
+</body>
+</html>
